@@ -9,7 +9,12 @@ interface Props {
   onVoted: () => void;
 }
 
-export default function VoteCard({ pollId, question, options, onVoted }: Props) {
+export default function VoteCard({
+  pollId,
+  question,
+  options,
+  onVoted,
+}: Props) {
   const [selected, setSelected] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -32,37 +37,80 @@ export default function VoteCard({ pollId, question, options, onVoted }: Props) 
 
   return (
     <div className="w-full space-y-6">
-      <h2 className="text-xl font-bold">{question}</h2>
-      <div className="space-y-3">
-        {options.map((option, index) => (
-          <button
-            key={index}
-            onClick={() => setSelected(index)}
-            className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all text-left ${
-              selected === index
-                ? "border-emerald-500 bg-emerald-500/10"
-                : "border-gray-700 bg-gray-900 hover:border-gray-500"
-            }`}
-          >
-            <div
-              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                selected === index ? "border-emerald-500" : "border-gray-500"
+      <h2 className="font-display text-2xl font-bold opacity-0 animate-slide-up">
+        {question}
+      </h2>
+
+      <div className="space-y-2.5">
+        {options.map((option, index) => {
+          const isSelected = selected === index;
+          return (
+            <button
+              key={index}
+              onClick={() => setSelected(index)}
+              className={`w-full flex items-center gap-4 p-4 rounded-2xl border transition-all duration-200 text-left opacity-0 animate-slide-up hover:scale-[1.01] active:scale-[0.99] ${
+                isSelected
+                  ? "border-lime/40 bg-lime-dim shadow-[0_0_20px_rgba(190,242,100,0.08)]"
+                  : "border-border-subtle bg-surface-raised hover:border-border-hover hover:bg-surface-hover"
               }`}
+              style={{ animationDelay: `${(index + 1) * 0.06}s` }}
             >
-              {selected === index && (
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-              )}
-            </div>
-            <span className="text-gray-200">{option}</span>
-          </button>
-        ))}
+              {/* Custom radio */}
+              <div
+                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${
+                  isSelected ? "border-lime" : "border-text-muted"
+                }`}
+              >
+                <div
+                  className={`w-2.5 h-2.5 rounded-full bg-lime transition-all duration-200 ${
+                    isSelected ? "scale-100 opacity-100" : "scale-0 opacity-0"
+                  }`}
+                />
+              </div>
+              <span
+                className={`transition-colors duration-200 ${
+                  isSelected ? "text-text-primary" : "text-text-secondary"
+                }`}
+              >
+                {option}
+              </span>
+            </button>
+          );
+        })}
       </div>
+
       <button
         onClick={handleSubmit}
         disabled={selected === null || loading}
-        className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold rounded-xl transition-colors"
+        className="w-full py-3.5 bg-lime text-surface font-bold rounded-2xl transition-all duration-200 hover:shadow-[0_0_30px_rgba(190,242,100,0.2)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:hover:shadow-none disabled:hover:scale-100 opacity-0 animate-slide-up"
+        style={{ animationDelay: `${(options.length + 1) * 0.06}s` }}
       >
-        {loading ? "Submitting..." : "Vote"}
+        {loading ? (
+          <span className="inline-flex items-center gap-2">
+            <svg
+              className="w-4 h-4 animate-spin"
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
+            </svg>
+            Voting...
+          </span>
+        ) : (
+          "Vote"
+        )}
       </button>
     </div>
   );

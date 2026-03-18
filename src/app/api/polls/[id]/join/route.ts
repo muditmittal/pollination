@@ -1,41 +1,63 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPoll, addParticipant, getUsedAvatarIndices } from "@/lib/store";
-import { AVATARS } from "@/lib/avatars";
-import { broadcast } from "@/lib/sse";
+import { nanoid } from "nanoid";
+import { getPoll, addParticipant } from "@/lib/store";
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+const THIRTY_DAYS = 60 * 60 * 24 * 30;
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const { id } = await params;
-  const poll = getPoll(id);
-  if (!poll) return NextResponse.json({ error: "Poll not found" }, { status: 404 });
-  if (poll.status !== "active") return NextResponse.json({ error: "Poll has ended" }, { status: 400 });
+  const poll = await getPoll(id);
+  if (!poll)
+    return NextResponse.json({ error: "Poll not found" }, { status: 404 });
+  if (poll.status !== "active")
+    return NextResponse.json({ error: "Poll has ended" }, { status: 400 });
 
   const existingId = req.cookies.get(`participant_${id}`)?.value;
-  if (existingId) return NextResponse.json({ error: "Already joined" }, { status: 400 });
+  if (existingId)
+    return NextResponse.json({ error: "Already joined" }, { status: 400 });
 
-  const { name } = await req.json();
+  const { name, avatarIndex } = await req.json();
   if (!name || typeof name !== "string" || name.trim().length === 0) {
     return NextResponse.json({ error: "Name required" }, { status: 400 });
   }
+  if (typeof avatarIndex !== "number" || avatarIndex < 0 || avatarIndex > 19) {
+    return NextResponse.json(
+      { error: "Valid avatarIndex required" },
+      { status: 400 }
+    );
+  }
 
-  const usedIndices = getUsedAvatarIndices(id);
-  const allIndices = Array.from({ length: AVATARS.length }, (_, i) => i);
-  const available = allIndices.filter((i) => !usedIndices.includes(i));
-  const avatarIndex = available.length > 0
-    ? available[Math.floor(Math.random() * available.length)]
-    : Math.floor(Math.random() * AVATARS.length);
-
-  const participant = addParticipant(id, name.trim(), avatarIndex);
-  if (!participant) return NextResponse.json({ error: "Failed to join" }, { status: 500 });
-
-  broadcast(id, "participant_joined", {
-    id: participant.id, name: participant.name, avatarIndex: participant.avatarIndex,
-  });
+  const participantId = nanoid(12);
+  const participant = await addParticipant(
+    participantId,
+    id,
+    name.trim(),
+    avatarIndex
+  );
 
   const response = NextResponse.json({
-    id: participant.id, name: participant.name, avatarIndex: participant.avatarIndex,
+    id: participant.id,
+    name: participant.name,
+    avatarIndex: participant.avatarIndex,
   });
+
   response.cookies.set(`participant_${id}`, participant.id, {
-    httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24,
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: THIRTY_DAYS,
   });
+
+  // Track last voted poll for returning voters
+  response.cookies.set("last_voted_poll", id, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: THIRTY_DAYS,
+  });
+
   return response;
 }

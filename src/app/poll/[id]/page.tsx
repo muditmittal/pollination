@@ -30,7 +30,11 @@ interface PollData {
   isCreator: boolean;
 }
 
-export default function PollPage({ params }: { params: Promise<{ id: string }> }) {
+export default function PollPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
   const [poll, setPoll] = useState<PollData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,7 +45,9 @@ export default function PollPage({ params }: { params: Promise<{ id: string }> }
     try {
       const res = await fetch(`/api/polls/${id}`);
       if (!res.ok) {
-        setError(res.status === 404 ? "Poll not found" : "Something went wrong");
+        setError(
+          res.status === 404 ? "Poll not found" : "Something went wrong"
+        );
         return;
       }
       const data = await res.json();
@@ -57,48 +63,16 @@ export default function PollPage({ params }: { params: Promise<{ id: string }> }
     fetchPoll();
   }, [fetchPoll]);
 
-  // SSE connection
+  // Short polling for live updates (Vercel-compatible, replaces SSE)
   useEffect(() => {
     if (!poll || poll.status === "ended") return;
 
-    const eventSource = new EventSource(`/api/polls/${id}/stream`);
+    const interval = setInterval(() => {
+      fetchPoll();
+    }, 3000);
 
-    eventSource.addEventListener("vote_cast", (e) => {
-      const data = JSON.parse(e.data);
-      setPoll((prev) =>
-        prev ? { ...prev, voteCounts: data.voteCounts, totalVotes: data.totalVotes } : prev
-      );
-    });
-
-    eventSource.addEventListener("participant_joined", (e) => {
-      const data = JSON.parse(e.data);
-      setPoll((prev) => {
-        if (!prev) return prev;
-        const exists = prev.participants.some((p) => p.id === data.id);
-        if (exists) return prev;
-        return {
-          ...prev,
-          participants: [...prev.participants, { ...data, hasVoted: false }],
-        };
-      });
-    });
-
-    eventSource.addEventListener("poll_ended", (e) => {
-      const data = JSON.parse(e.data);
-      setPoll((prev) =>
-        prev
-          ? { ...prev, status: "ended", voteCounts: data.voteCounts, totalVotes: data.totalVotes }
-          : prev
-      );
-    });
-
-    eventSource.onerror = () => {
-      eventSource.close();
-      setTimeout(fetchPoll, 2000);
-    };
-
-    return () => eventSource.close();
-  }, [id, poll?.status, fetchPoll]);
+    return () => clearInterval(interval);
+  }, [poll?.status, fetchPoll]);
 
   const handleEndPoll = async () => {
     setEnding(true);
@@ -113,7 +87,10 @@ export default function PollPage({ params }: { params: Promise<{ id: string }> }
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
-        <div className="animate-pulse text-gray-400">Loading poll...</div>
+        <div className="flex flex-col items-center gap-4 opacity-0 animate-fade-in">
+          <div className="w-8 h-8 border-2 border-lime/30 border-t-lime rounded-full animate-spin" />
+          <span className="text-text-muted text-sm">Loading poll...</span>
+        </div>
       </main>
     );
   }
@@ -121,9 +98,15 @@ export default function PollPage({ params }: { params: Promise<{ id: string }> }
   if (error || !poll) {
     return (
       <main className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">{error || "Not found"}</h1>
-          <a href="/" className="text-emerald-400 hover:text-emerald-300">
+        <div className="text-center opacity-0 animate-scale-in">
+          <div className="text-4xl mb-4">:(</div>
+          <h1 className="font-display text-xl font-bold mb-2">
+            {error || "Not found"}
+          </h1>
+          <a
+            href="/"
+            className="text-lime text-sm hover:underline underline-offset-4"
+          >
             Create a new poll
           </a>
         </div>
@@ -140,28 +123,37 @@ export default function PollPage({ params }: { params: Promise<{ id: string }> }
   const showJoin = !isEnded && !hasJoined;
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-6 pt-12">
+    <main className="flex min-h-screen flex-col items-center p-6 pt-16">
       <div className="w-full max-w-lg space-y-6">
-        <div className="flex items-center justify-between">
+        {/* Header */}
+        <div className="flex items-center justify-between opacity-0 animate-slide-up">
           <StatusBadge status={poll.status} />
           {poll.isCreator && poll.status === "active" && (
             <button
               onClick={handleEndPoll}
               disabled={ending}
-              className="px-4 py-1.5 text-sm border border-red-500/30 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+              className="px-4 py-1.5 text-xs font-medium border border-danger/20 text-danger/80 hover:bg-danger-dim hover:text-danger rounded-xl transition-all duration-200 hover:scale-105 active:scale-95"
             >
               {ending ? "Ending..." : "End Poll"}
             </button>
           )}
         </div>
 
+        {/* Share link */}
         {poll.isCreator && poll.status === "active" && (
-          <ShareLink pollId={poll.id} />
+          <div className="opacity-0 animate-slide-up stagger-1">
+            <ShareLink pollId={poll.id} />
+          </div>
         )}
 
-        <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+        {/* Main content card */}
+        <div className="glass-card p-8 opacity-0 animate-scale-in stagger-2">
           {showJoin && (
-            <JoinScreen pollId={poll.id} question={poll.question} onJoined={fetchPoll} />
+            <JoinScreen
+              pollId={poll.id}
+              question={poll.question}
+              onJoined={() => fetchPoll()}
+            />
           )}
           {showVote && (
             <VoteCard
@@ -181,14 +173,25 @@ export default function PollPage({ params }: { params: Promise<{ id: string }> }
           )}
         </div>
 
+        {/* Participants */}
         {poll.participants.length > 0 && (
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-gray-400">
+          <div className="space-y-3 opacity-0 animate-slide-up stagger-3">
+            <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider">
               Participants ({poll.participants.length})
             </h3>
             <ParticipantList participants={poll.participants} />
           </div>
         )}
+
+        {/* Back to home */}
+        <div className="text-center pt-4 opacity-0 animate-fade-in stagger-4">
+          <a
+            href="/"
+            className="text-text-muted text-xs hover:text-text-secondary transition-colors"
+          >
+            Create your own poll
+          </a>
+        </div>
       </div>
     </main>
   );

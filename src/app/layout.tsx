@@ -24,6 +24,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Pollination",
   description: "Quick, fun polls with live results",
+  icons: {
+    icon: "/Pollination.svg",
+    apple: "/Pollination.png",
+  },
   openGraph: {
     title: "Pollination",
     description: "Create a poll. Share the link. Get answers.",

@@ -203,9 +203,9 @@ export default function PollPage({
           </div>
         )}
 
-        {/* Create new poll CTA — only on ended polls */}
-        {isEnded && showCta && (
-          <div className={`text-center pt-2 ${justEnded ? "animate-bounce-in" : "opacity-0 animate-fade-in"}`}>
+        {/* Create new poll CTA — for voters who voted, or ended polls */}
+        {((isEnded && showCta) || (!poll.isCreator && hasVoted)) && (
+          <div className={`text-center pt-2 ${justEnded ? "animate-bounce-in" : "opacity-0 animate-slide-up stagger-4"}`}>
             <a
               href="/"
               className="inline-flex items-center gap-2 px-8 py-3.5 bg-lime text-surface font-bold rounded-2xl transition-all duration-200 hover:shadow-[0_0_30px_rgba(190,242,100,0.2)] hover:scale-[1.02] active:scale-[0.98]"

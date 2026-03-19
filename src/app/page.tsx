@@ -43,7 +43,7 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center p-6">
       <div className="text-center mb-10 opacity-0 animate-slide-up">
         <h1 className="font-display text-5xl sm:text-6xl font-extrabold tracking-tight mb-3 bg-gradient-to-b from-white to-text-secondary bg-clip-text text-transparent">
-          Pollify
+          Pollination
         </h1>
         <p className="text-text-muted text-sm tracking-wide">
           Create a poll. Share the link. Get answers.

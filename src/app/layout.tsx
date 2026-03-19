@@ -15,7 +15,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Pollify",
+  title: "Pollination",
   description: "Quick, fun polls with live results",
 };
 

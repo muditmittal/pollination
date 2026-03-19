@@ -57,7 +57,9 @@ export default function Home() {
             href={`/poll/${lastVotedPoll.id}`}
             className="glass-card flex items-center gap-3 px-5 py-3 hover:border-lime/20 transition-all duration-200 group"
           >
-            <div className="w-2 h-2 rounded-full bg-lime animate-pulse-soft shrink-0" />
+            {lastVotedPoll.status === "active" && (
+              <div className="w-2 h-2 rounded-full bg-lime animate-pulse-soft shrink-0" />
+            )}
             <span className="text-text-secondary text-sm">
               <span className="text-text-primary font-medium group-hover:text-lime transition-colors">
                 {lastVotedPoll.question}

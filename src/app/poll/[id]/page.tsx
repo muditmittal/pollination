@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback, use } from "react";
+import { useEffect, useState, useCallback, useRef, use } from "react";
 import JoinScreen from "@/components/JoinScreen";
 import VoteCard from "@/components/VoteCard";
 import ResultsView from "@/components/ResultsView";
 import StatusBadge from "@/components/StatusBadge";
 import ShareLink from "@/components/ShareLink";
 import ParticipantList from "@/components/ParticipantList";
+import Confetti from "@/components/Confetti";
 
 interface PollData {
   id: string;
@@ -40,6 +41,9 @@ export default function PollPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ending, setEnding] = useState(false);
+  const [justEnded, setJustEnded] = useState(false);
+  const [showCta, setShowCta] = useState(false);
+  const prevStatus = useRef<string | null>(null);
 
   const fetchPoll = useCallback(async () => {
     try {
@@ -62,6 +66,21 @@ export default function PollPage({
   useEffect(() => {
     fetchPoll();
   }, [fetchPoll]);
+
+  // Detect poll ending → trigger confetti + delayed CTA
+  useEffect(() => {
+    if (poll?.status === "ended" && prevStatus.current === "active") {
+      setJustEnded(true);
+      setTimeout(() => setShowCta(true), 1200);
+    }
+    // Also show CTA immediately if page loads with ended poll
+    if (poll?.status === "ended" && prevStatus.current === null) {
+      setShowCta(true);
+    }
+    if (poll) {
+      prevStatus.current = poll.status;
+    }
+  }, [poll?.status]);
 
   // Short polling for live updates (Vercel-compatible, replaces SSE)
   useEffect(() => {
@@ -124,6 +143,7 @@ export default function PollPage({
 
   return (
     <main className="flex min-h-screen flex-col items-center p-6 pt-16">
+      <Confetti trigger={justEnded} />
       <div className="w-full max-w-lg space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between opacity-0 animate-slide-up">
@@ -183,15 +203,20 @@ export default function PollPage({
           </div>
         )}
 
-        {/* Back to home */}
-        <div className="text-center pt-4 opacity-0 animate-fade-in stagger-4">
-          <a
-            href="/"
-            className="text-text-muted text-xs hover:text-text-secondary transition-colors"
-          >
-            Create your own poll
-          </a>
-        </div>
+        {/* Create new poll CTA — only on ended polls */}
+        {isEnded && showCta && (
+          <div className={`text-center pt-2 ${justEnded ? "animate-bounce-in" : "opacity-0 animate-fade-in"}`}>
+            <a
+              href="/"
+              className="inline-flex items-center gap-2 px-8 py-3.5 bg-lime text-surface font-bold rounded-2xl transition-all duration-200 hover:shadow-[0_0_30px_rgba(190,242,100,0.2)] hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Create new poll
+            </a>
+          </div>
+        )}
       </div>
     </main>
   );
